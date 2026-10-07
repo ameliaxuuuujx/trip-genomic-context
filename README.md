@@ -1,10 +1,20 @@
 # Genomic Neighborhood Effects on Reporter Gene Expression
 
 ## Description
+Our project explores the role that genomic contexts have on gene expression by reproducing a figure from [Akhtar et al. 2013](https://www.cell.com/fulltext/S0092-8674(13)00889-1). The genomic context is an important factor of transcriptional regulation because nearby regulatory elements, chromatin accessibility, and local chromatin state can influence how strongly a gene is expressed. Disruption of the noncoding regions surrounding a gene can often lead to dysregulation of gene expression, but it can be challenging to study genomic context on a genome wide scale. To better understand chromatin position effects, Akhtar et al created a barcoded transgene reporter assay, Thousands of Reporters Integrated in Parallel (TRIP) to study the impact chromatin context has on transcription across the genome. In our project, we are re-analyzing Figure 6 to compare reporter expression to its proximity to enhancers and nearby genes. Our stretch goal is to visualize several IRs using publicly available datasets such as incorporating a recently published [MicroC dataset (Jusuf et al 2026, Nat Struct Mol Biol)](https://pmc.ncbi.nlm.nih.gov/articles/PMC13523127/#SM1) to compare the genome wide observations to locus specific examples. Overall, this project will help us gain a deeper understanding of the role chromatin context has on transcriptional regulation. 
 
 ## Example published figure
+The primary analysis of this project is based on Figure 6 from Akhtar et al. (2013), which demonstrates the relationships between TRIP reporter expression and the proximity of endogenous genes and enhancers.
 ![example picture](example-pic.jpg)
-![microC](example-microc.png)
+**Figure 6 from [Akhtar et al. (2013)](https://www.cell.com/fulltext/S0092-8674(13)00889-1), showing the effects of gene and enhancer proximity on reporter expression.*
+
+For our Micro-C stretch goal, the following figure provides an example of locus-specific visualization integrating chromatin context and gene regulation.
+
+<p align="center">
+  <img src="example-microc.png" width="350">
+</p>
+
+**Figure 5 from [Lin et al. (2025)](https://www.sciencedirect.com/science/article/pii/S1534580725000644), illustrating a locus-specific example of chromatin context and gene regulation.*
 
 ## Datasets
 ### 1. TRIP and RNA-seq data
@@ -19,14 +29,13 @@
 - [Mouse gene annotation: ](https://hgdownload.soe.ucsc.edu/goldenPath/mm9/bigZips/genes/mm9.ensGene.gtf.gz) Gene boundaries, TSS/TES, intergenic classification, nearest-gene distances
 
 ### 3. mESC enhancer-associated ChIP-seq data
-Akhtar et al. (2013) constructed active enhancer annotations from previously published mESC ChIP-seq data, including H3K4me1, H3K27ac, p300, and H3K4me3 from[Creyghton et al. (2010), GEO GSE24164](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE24164). Their workflow required reprocessing raw ChIP-seq data, including alignment to mm9, duplicate removal, peak calling, and peak filtering. Instead of reconstructing this older enhancer annotation from raw data, we will use a more recentand standardized ENCODE cCRE annotation from 129 ES-E14 mouse embryonic stem cells [ENCSR433TOM](https://www.encodeproject.org/annotations/ENCSR433TOM/). This cell line closely matches the E14/129 background used in the original TRIP study and provides a curated regulatory-element annotation based on integrated DNase-seq, H3K27ac, H3K4me3, and rDHS signals. Because the ENCODE annotation is based on the mm10 mouse genome assembly whereas the original TRIP integration coordinates are in mm9, we will use [UCSC LiftOver](https://genome.ucsc.edu/cgi-bin/hgLiftOver)to place the datasets in a common coordinate system before the proximity analyses.
+Akhtar et al. (2013) constructed active enhancer annotations from previously published mESC ChIP-seq data, including H3K4me1, H3K27ac, p300, and H3K4me3 from[Creyghton et al. (2010), GEO GSE24164](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE24164). Their workflow required reprocessing raw ChIP-seq data, including alignment to mm9, duplicate removal, peak calling, and peak filtering. Instead of reconstructing this older enhancer annotation from raw data, we will use a more recentand standardized ENCODE cCRE annotation from 129 ES-E14 mouse embryonic stem cells [ENCSR433TOM](https://www.encodeproject.org/annotations/ENCSR433TOM/). This cell line closely matches the E14/129 background used in the original TRIP study and provides a curated regulatory-element annotation based on integrated DNase-seq, H3K27ac, H3K4me3, and rDHS signals. Because the ENCODE annotation is based on the mm10 mouse genome assembly whereas the original TRIP integration coordinates are in mm9, we will use [UCSC LiftOver](https://genome.ucsc.edu/cgi-bin/hgLiftOver) to place the datasets in a common coordinate system before the proximity analyses.
 
 ### 4. Endogenous mESC gene expression
 RNA-seq data from the 11 monoclonal mESC lines generated by Akhtar et al. (2013), [GEO GSE48607](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE49807). The available processed dataset provides Ensembl gene-level raw read counts across 11 mESC lines. The original Figure 6A classified genes as expressed (FPKM > 0) or not detectably expressed (FPKM = 0). Because the original FPKM table is not separately provided, we will use the available RNA-seq counts as a proxy for this binary expression classification, and assess whether the resulting gene counts are consistent with the published figure.
 
 ### 5. Micro-C
-- *Need some description*
-- The merged mESC Micro-C contact map is provided in mm39, so reporter coordinates from mm9 will require genome-build conversion before integration. ([UCSC liftOver / chain file](https://hgdownload.soe.ucsc.edu/goldenPath/mm9/liftOver/mm9ToMm39.over.chain.gz)
+[GEO GSE286495](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE286495) provides high-depth Micro-C maps from mESCs, which will be used for locus-specific visualization of 3D chromatin contacts.
 
 ## Software
 
