@@ -14,7 +14,7 @@ For our Micro-C stretch goal, the following figure provides an example of locus-
   <img src="example-microc.png" width="350">
 </p>
 
-**Figure 5 from [Lin et al. (2025)](https://www.sciencedirect.com/science/article/pii/S1534580725000644), illustrating a locus-specific example of chromatin context and gene regulation.*
+**Figure 5 from [Chakraborty et al. (2025)](https://www.sciencedirect.com/science/article/pii/S1534580725000644), illustrating a locus-specific example of chromatin context and gene regulation.*
 
 ## Datasets
 ### 1. TRIP and RNA-seq data
