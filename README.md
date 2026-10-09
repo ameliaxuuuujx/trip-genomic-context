@@ -5,13 +5,13 @@ Our project explores the role that genomic contexts have on gene expression by r
 
 ## Example published figure
 The primary analysis of this project is based on Figure 6 from Akhtar et al. (2013), which demonstrates the relationships between TRIP reporter expression and the proximity of endogenous genes and enhancers.
-![example picture](example-pic.jpg)
+![example picture](pic/example-pic.jpg)
 **Figure 6 from [Akhtar et al. (2013)](https://www.cell.com/fulltext/S0092-8674(13)00889-1), showing the effects of gene and enhancer proximity on reporter expression.*
 
 For our Micro-C stretch goal, the following figure provides an example of locus-specific visualization integrating chromatin context and gene regulation.
 
 <p align="center">
-  <img src="example-microc.png" width="350">
+  <img src="pic/example-microc.png" width="350">
 </p>
 
 **Figure 5 from [Chakraborty et al. (2025)](https://www.sciencedirect.com/science/article/pii/S1534580725000644), illustrating a locus-specific example of chromatin context and gene regulation.*
