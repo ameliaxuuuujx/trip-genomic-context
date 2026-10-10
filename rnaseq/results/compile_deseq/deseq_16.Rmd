@@ -1,0 +1,150 @@
+---
+title: "deseq_16.Rmd"
+output: html_document
+date: "2026-10-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Differential Expression Analysis of TRIP_clone16
+
+Note: The working directory of this should be `trip-genomic-context/rnaseq`
+
+This workflow is following the instructions from NICHD-BSPC's [intro-rnaseq-hpc](https://github.com/NICHD-BSPC/intro-rnaseq-hpc)
+
+TO_ADD:All summarized quality control metrics are saved in `this/path`
+
+A future way to improve this workflow would be to automate this process. Instead, the lines of this file that were changed to account for the different clones will be clearly labeled by note `###CONFIG`, but also listed here:
+
+1.  `#Load metadata` Every clone's DESeq has their own metadata since the groups are assigned differently.
+2.  `#Load GTF` This is not included in the repo, but can be downloaded [here](https://www.gencodegenes.org/mouse/release_M25.html)
+3.  `#Exported results` Change the file names to match the clone!
+
+```{r, results='hide'}
+#Load Libraries
+library(tidyverse)
+library(RColorBrewer)
+library(DESeq2)
+library(pheatmap)
+library(DEGreport)
+library(ggplot2)
+library(rtracklayer)
+```
+
+```{r}
+#Load data
+data <- read.table("../../data/trip_clone_rnaseqcounts.txt",
+                   header = TRUE, row.names = 1)
+```
+
+```{r}
+#Load metadata 
+###CONFIG:Change path to meta_file
+meta <- read.table("../../data/metadata_tables/clone_16_meta.txt", header=T, row.names=1, sep = "\t")
+
+#HELP FROM HOPGPT. all(colnames(data) == rownames(meta)) was FALSE. This was because the filenames were slightly off. To make this true, I need to replace the "-" with ".". To do this I asked hop for help on how to do this
+rownames(meta) <- gsub("-", ".", rownames(meta))
+```
+
+```{r}
+
+#Create DESEq2Dataset object
+dds <- DESeqDataSetFromMatrix(countData = data, colData = meta, design = ~ Group)
+
+#estimate size factors by median of ratios method
+dds <- estimateSizeFactors(dds)
+sizeFactors(dds)
+```
+
+### Principal Component Analysis
+
+What kinds of variation is there in the clones?
+
+```{r}
+#PCA
+rld <- rlog(dds, blind=TRUE)
+plotPCA(rld, intgroup="Group")
+```
+
+```{r}
+#Heatmap
+### Extract the rlog matrix from the object
+rld_mat <- assay(rld)    
+### Compute pairwise correlation values
+rld_cor <- cor(rld_mat)    
+## check the output of cor(), make note of the row names and column names
+heat.colors <- RColorBrewer::brewer.pal(6, "Blues")
+pheatmap(rld_cor, annotation = meta, color = heat.colors, border_color=NA, fontsize = 10, 
+         fontsize_row = 10, height=20)
+```
+
+### Dispersion Plot
+
+The purpose of this plot is to see how well the data fits the DESEq2 model
+
+```{r}
+#Analysis
+dds <- DESeq(dds)
+
+#Check dispersion
+plotDispEsts(dds)
+```
+
+### Wald Test
+
+positive fold change: gene expression is higher in the `exp` group than the remaining 11 clones
+
+```{r}
+
+#Wald test
+contrast <- c("Group", "exp", "control")
+
+#Extract results
+res_table <- results(dds, contrast=contrast)
+summary(res_table, alpha = 0.05)
+```
+
+### Results
+
+```{r}
+padj.cutoff <- 0.1
+
+# Create a dataframe to simplify the res_table_try1 object
+res_table_df <- res_table %>%
+  data.frame() %>%
+  rownames_to_column(var="gene")
+
+#Add GTF info column to table
+## Convert our GTF to a large data frame
+###CONFIG: This is not in the repo and
+gtf <- readGFF("../../data/gencode.vM25.annotation.gtf")
+
+# Extract only the columns with ensembl gene names and gene symbols
+gtf_names <- gtf %>% dplyr::select(gene_id, gene_name) %>%
+  dplyr::distinct() %>% 
+  dplyr::rename(ensgene = gene_id, symbol = gene_name)
+
+##merge gene symbols
+res_table_df <- merge(gtf_names,res_table_df, by.x="ensgene", by.y="gene")
+
+# Subset the dataframe to keep only significant genes 
+sig_genes <- res_table_df %>%
+  dplyr::filter(padj < padj.cutoff)
+
+#Exported results
+##CONFIG Change the file names of the output!
+write.table(res_table_df, file = "c16_res_table__df.tsv", sep = "\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+write.table(sig_genes, file = "c16_sig_genes.tsv", sep = "\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+```
+
+### Data Visualization with MA Plot
+
+```{r}
+
+#Under construction!
+
+```

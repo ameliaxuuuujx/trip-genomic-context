@@ -1,0 +1,12 @@
+Clone 	Group
+EStTA-PB-B-16	control
+EStTA-PB-B-17	control
+EStTA-PB-B-18	control
+EStTA-PB-B-19	control
+EStTA-PB-B-20	control
+EStTA-PB-B-21	control
+EStTA-PB-B-22	control
+EStTA-PB-B-23	control
+EStTA-PB-B-24	control
+EStTA-PB-B-25	control
+EStTA-PB-B-26	exp
