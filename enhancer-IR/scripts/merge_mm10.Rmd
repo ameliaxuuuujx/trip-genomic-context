@@ -1,0 +1,39 @@
+This Rmd file is to merge the counts from mm9 to our newly produced mm10 bed file
+
+## Load the library and the data
+```{r}
+# load the tidyverse
+library(tidyverse)
+
+# load the TRIP data (mm9 txt file)
+mm9 <- read_tsv("/Users/cmdb/trip-genomic-context/enhancer-IR/data/raw/mmc2.txt", skip = 1)
+
+# load the liftovered mm10 data
+mm10_bed <- read_tsv("/Users/cmdb/trip-genomic-context/enhancer-IR/data/processed/trip-mm10-short.bed", col_names = FALSE)
+# add headers
+colnames(mm10_bed) <- c("chrom", "start", "end", "pool_barcode", "score", "strand")
+```
+
+## Process `mm9` dataframe 
+
+- Create a new column to `mm9`: "pool_barcode"
+- Remove columns we don't want: `TRIP_pool`, `barcode`, `position`, `strand`, `chromosome`
+```{r}
+mm9 <- mm9 %>% 
+  mutate(pool_barcode = paste0(TRIP_pool, "_", barcode)) %>% 
+  select(pool_barcode, normalization_counts_1, normalization_counts_2, expression_counts_1, expression_counts_2)
+```
+
+## Merge `mm9` and `mm10_bed`
+
+Now we can have the counts of TRIP with mm10 reference genome
+```{r}
+merged_mm10 <- mm10_bed %>% 
+  left_join(mm9, by = "pool_barcode")
+```
+
+## Save as bedfile
+```{r}
+write_tsv(merged_mm10, "/Users/cmdb/trip-genomic-context/enhancer-IR/data/processed/trip-mm10-long.bed", col_names = FALSE)
+```
+
