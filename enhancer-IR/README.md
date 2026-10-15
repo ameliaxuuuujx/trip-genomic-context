@@ -74,6 +74,7 @@
 - `data/processed/trip-distance-bins-filtered-mm10.tsv`: Processed IR-gene assignments with expression status, gene side, and distance bins.
 - `results/figure6A_summary.tsv`: Mean IR expression, SEM, and distance information for each group.
 - `results/figure6A_280kb.png`: Figure 6A reanalysis plot.
+![](results/figure6A_280kb.png)
 
 ## Step 3: Reanalyze Figure 6B
 
