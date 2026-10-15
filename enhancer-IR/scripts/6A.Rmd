@@ -1,0 +1,27 @@
+# Reanalyze Figure 6A
+
+```{r}
+# load the library
+library(tidyverse)
+
+# load the data
+df <- read_tsv("/Users/cmdb/trip-genomic-context/enhancer-IR/data/processed/trip-distance-bins-mm10.tsv",
+               col_names = c("chrom", 
+                             "start",
+                             "end",
+                             "pool_barcode",
+                             "score",
+                             "strand",
+                             "normalization_counts_1",
+                             "normalization_counts_2",
+                             "expression_counts_1",
+                             "expression_counts_2",
+                             "gene_chrom",
+                             "gene_start",
+                             "gene_end",
+                             "gene_id",))
+```
+
+
+## Calculate the reporter expression of each IR
+
