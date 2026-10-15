@@ -164,13 +164,12 @@ ggsave("/Users/cmdb/trip-genomic-context/enhancer-IR/results/figure6A_280kb.png"
 
 
 ```{r}
+# Count unique IRs by gene expression status
 df %>%
-  group_by(side, distance_bin) %>%
+  group_by(gene_status) %>%
   summarise(
-    min_kb = min(distance) / 1000,
-    median_kb = median(distance) / 1000,
-    max_kb = max(distance) / 1000,
-    n = n(),
+    n_IRs = n_distinct(pool_barcode),
+    n_genes = n_distinct(gene_id),
     .groups = "drop"
   )
 ```
