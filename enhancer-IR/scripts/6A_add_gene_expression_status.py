@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 status_file = "/Users/cmdb/trip-genomic-context/enhancer-IR/data/processed/gene-expression-status.tsv"
-nearest_file = "/Users/cmdb/trip-genomic-context/enhancer-IR/data/processed/trip-nearest-gene-mm10.bed"
-output_file = "/Users/cmdb/trip-genomic-context/enhancer-IR/data/processed/trip-nearest-gene-status-mm10.bed"
+nearest_file = "/Users/cmdb/trip-genomic-context/enhancer-IR/data/processed/trip-nearest-gene-filtered-mm10.bed"
+output_file = "/Users/cmdb/trip-genomic-context/enhancer-IR/data/processed/trip-nearest-gene-status-filtered-mm10.bed"
 
 # Store gene expression status in a dictionary
 gene_status = {}

@@ -1,11 +1,12 @@
 # Reanalyze Figure 6A
 
+## Step 1: Read and process the data
 ```{r}
 # load the library
 library(tidyverse)
 
-# load the data
-df <- read_tsv("/Users/cmdb/trip-genomic-context/enhancer-IR/data/processed/trip-distance-bins-mm10.tsv",
+# load and process the data
+df <- read_tsv("/Users/cmdb/trip-genomic-context/enhancer-IR/data/processed/trip-distance-bins-filtered-mm10.tsv",
                col_names = c("chrom", 
                              "start",
                              "end",
@@ -19,9 +20,158 @@ df <- read_tsv("/Users/cmdb/trip-genomic-context/enhancer-IR/data/processed/trip
                              "gene_chrom",
                              "gene_start",
                              "gene_end",
-                             "gene_id",))
+                             "gene_id",
+                             "gene_score",
+                             "gene_strand",
+                             "distance",
+                             "gene_status",
+                             "side",
+                             "distance_bin"))
 ```
 
 
-## Calculate the reporter expression of each IR
+## Step2: Identify TRIP pools
+```{r}
+df <- df %>%
+  mutate(pool = sub("_.*", "", pool_barcode))
+table(df$pool)
+```
+## Step 3: Calculate IR expression
+```{r}
+df <- df %>% 
+  mutate(gdna = normalization_counts_1 + normalization_counts_2,
+         cdna = expression_counts_1 + expression_counts_2,
+         IR_expression = if_else(gdna > 0, cdna / gdna, NA_real_))
+
+summary(df$IR_expression)
+```
+
+## Step 4: Calculate median IR expression for each pool and bin
+```{r}
+pool_summary <- df %>% 
+  group_by(pool, gene_status, side, distance_bin) %>% 
+  summarise(median_expression = median(IR_expression, na.rm = TRUE),
+            median_distance = median(distance), .group = "drop")
+head(pool_summary)
+```
+
+## Step 5: Calculate mean and SEM across pools
+```{r}
+figure6A_summary <- pool_summary %>% 
+  group_by(gene_status, side, distance_bin) %>% 
+  summarise(mean_expression = mean(median_expression),
+            sem = sd(median_expression) / sqrt(n()),
+            mean_distance = mean(median_distance),
+            n_pools = n(),
+            .group = "drop")
+```
+## Step 6: Assign negative distance to End side
+```{r}
+
+gene_width <- 100 # create a space for the gene for visualization
+
+figure6A_summary <- figure6A_summary %>% 
+  mutate(distance_kb = if_else(side == "Start", -mean_distance / 1000 - gene_width / 2, mean_distance / 1000 + gene_width / 2))
+```
+
+## Step 7: Plot figure 6A
+```{r}
+# Count IRs in each gene expression group
+gene_counts <- df %>%
+  group_by(gene_status) %>%
+  summarise(n = n_distinct(pool_barcode), .groups = "drop")
+
+print(gene_counts)
+
+# Prepare labels
+n_expressed <- gene_counts$n[gene_counts$gene_status == "expressed"]
+n_nonexpressed <- gene_counts$n[gene_counts$gene_status == "non-expressed"]
+
+# Plot
+p <- figure6A_summary %>% 
+  ggplot(aes(x = distance_kb,
+             y = mean_expression,
+             color = gene_status,
+             group = interaction(gene_status, side))) +
+  # Gene region
+  annotate("rect",
+           xmin = -50, xmax = 50,
+           ymin = 0, ymax = Inf,
+           fill = "grey90") +
+  # Lines
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 1) +
+  # errorbars
+  geom_errorbar(aes(ymin = mean_expression - sem,
+                    ymax = mean_expression + sem),
+                width = 2) +
+  # Number of IRs in each group
+  annotate("text",
+           x = -230, y = 1.15,
+           label = paste0("n=", n_expressed),
+           color = "#F8766D",
+           hjust = 0,
+           size = 4.5) +
+  annotate("text",
+           x = -230, y = 1.05,
+           label = paste0("n=", n_nonexpressed),
+           color = "#00BFC4",
+           hjust = 0,
+           size = 4.5) +
+  #Gene label 
+  annotate("text",
+           x = 0, y = 0.08,
+           label = "Gene",
+           size = 4.5) +
+  # Arrow indicating gene direction
+  annotate("segment",
+           x = -45, xend = 45,
+           y = 0.16, yend = 0.16,
+           arrow = arrow(length = unit(0.45, "cm")), linewidth = 0.6) +
+  # Axes
+  scale_x_continuous(breaks = c(-250, -150, -50, 50, 150, 250),
+                     labels = c('-200', "-100", "Start", "End", "100", "200")) +
+  scale_y_continuous(limits = c(0,NA),
+                     expand = expansion(mult = c(0, 0.05))) +
+  coord_cartesian(xlim = c(-280, 280)) +
+  # Legend
+  scale_color_manual(name = NULL,
+                     values = c("expressed" = "#F8766D",
+                                "non-expressed" = "#00BFC4"),
+                     labels = c("expressed" = "Expressed genes",
+                                "non-expressed" = "Non-expressed genes")) +
+  # Title
+  labs(x = "Distance from nearest gene (kb)",
+       y = "IR expression (cDNA/gDNA)",
+       color = "Gene expression") +
+  theme_classic()
+p
+```
+
+# Step 8: Save the result
+```{r}
+# save the summary table
+write_tsv(figure6A_summary, "/Users/cmdb/trip-genomic-context/enhancer-IR/results/figure6A_summary.tsv")
+
+# Save the plot
+ggsave("/Users/cmdb/trip-genomic-context/enhancer-IR/results/figure6A_280kb.png",
+       plot = p,
+       width = 8,
+       height = 5)
+```
+
+
+
+
+```{r}
+df %>%
+  group_by(side, distance_bin) %>%
+  summarise(
+    min_kb = min(distance) / 1000,
+    median_kb = median(distance) / 1000,
+    max_kb = max(distance) / 1000,
+    n = n(),
+    .groups = "drop"
+  )
+```
 

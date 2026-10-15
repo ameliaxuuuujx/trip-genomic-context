@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-input_file = "/Users/cmdb/trip-genomic-context/enhancer-IR/data/processed/trip-gene-side-mm10.bed"
-output_file = "/Users/cmdb/trip-genomic-context/enhancer-IR/data/processed/trip-distance-bins-mm10.tsv"
+input_file = "/Users/cmdb/trip-genomic-context/enhancer-IR/data/processed/trip-gene-side-filtered-mm10.bed"
+output_file = "/Users/cmdb/trip-genomic-context/enhancer-IR/data/processed/trip-distance-bins-filtered-mm10.tsv"
 
 start_rows = []
 end_rows = []
