@@ -1,0 +1,43 @@
+# Step 3.6 Plot Figure 6B
+
+Load library and data
+```{r}
+library(tidyverse)
+df <- read_tsv("/Users/cmdb/trip-genomic-context/enhancer-IR/results/figure6B_summary.tsv") 
+```
+
+Put Start on the left and End on the right
+```{r}
+df <- df %>% 
+  mutate(x = if_else(side == "Start",
+                     -distance_kb - 30, distance_kb + 30))
+```
+
+Plot relative enhancer frequency around genes
+```{r}
+p <- df %>% 
+  ggplot(aes(x = x, y = relative_frequency, group = side)) +
+  # highlight the gene body
+  annotate("rect",
+           xmin = -30, xmax = 30,
+           ymin = 0, ymax = Inf,
+           fill = "grey90") +
+  geom_line(color = "steelblue", linewidth = 0.8) +
+  geom_point(color = "steelblue", size = 1) +
+  # expected background frequency (relative frequency =1)
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  annotate("text", 
+           x = 0, y = 0.15,
+           label = "Gene", size = 4)+
+  # labe distances relative to gene Start and End
+  scale_x_continuous(breaks = c(-230, -130, -30, 30, 130, 230),
+                     label = c("-200", "-100", "Start", "End", "100", "200")) +
+  coord_cartesian(xlim = c(-240, 240)) +
+  labs(title = "Figure 6B reanalysis",
+       x = "Distance from gene (kb)",
+       y = "Relative enhancer frequency") +
+  theme_classic()
+
+p
+```
+
