@@ -51,7 +51,7 @@ summary(df$IR_expression)
 pool_summary <- df %>% 
   group_by(pool, gene_status, side, distance_bin) %>% 
   summarise(median_expression = median(IR_expression, na.rm = TRUE),
-            median_distance = median(distance), .group = "drop")
+            median_distance = median(distance), .groups = "drop")
 head(pool_summary)
 ```
 

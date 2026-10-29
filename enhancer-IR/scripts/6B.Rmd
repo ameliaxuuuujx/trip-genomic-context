@@ -40,4 +40,12 @@ p <- df %>%
 
 p
 ```
+Save the result
+```{r}
+# Save the plot
+ggsave("/Users/cmdb/trip-genomic-context/enhancer-IR/results/figure6B.png",
+       plot = p,
+       width = 8,
+       height = 5)
+```
 

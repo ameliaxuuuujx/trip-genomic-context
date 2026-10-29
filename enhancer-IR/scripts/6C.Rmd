@@ -1,0 +1,134 @@
+# Figure 6C reanalysis
+
+
+## Load libraries and data
+```{r}
+library(tidyverse)
+df <- read_tsv("/Users/cmdb/trip-genomic-context/enhancer-IR/data/processed/6C_distance-bins-mm10.tsv")
+```
+## Calculate reporter expression from two technical replicates
+```{r}
+df <- df %>%
+  mutate(
+    pool = sub("_.*", "", pool_barcode),
+    IR_expression = (expression_counts_1 + expression_counts_2) / (normalization_counts_1 + normalization_counts_2)
+  )
+```
+
+## Summarize expression by distance bin
+```{r}
+# calculate median expression seperately for each mPGK pool
+pool_summary <- df %>% 
+  group_by(pool, distance_bin) %>% 
+  summarise(median_expression = median(IR_expression),
+            .groups = "drop")
+# calculate mean and SEM across pool medians
+summary_6C <- pool_summary %>% 
+  group_by(distance_bin) %>% 
+  summarise(
+    mean_expression = mean(median_expression),
+    sem = sd(median_expression) / sqrt(n()),
+    n_pools = n(),
+    .groups = "drop"
+  )
+    
+# calculate mean enhancer distance in each bin
+distance_summary <- df %>% 
+  group_by(distance_bin) %>% 
+  summarise(mean_distance_kb = mean(distance) / 1000,
+            n_IRs = n(),
+            .groups = "drop")
+
+# combine expression and distance summaries
+summary_6C <- summary_6C %>% 
+  left_join(distance_summary, by = "distance_bin") %>% 
+  arrange(distance_bin)
+
+summary_6C
+
+# save the summary file
+write_tsv(summary_6C, "/Users/cmdb/trip-genomic-context/enhancer-IR/results/figure6C_summary.tsv")
+
+```
+## Plot figure 6C
+```{r}
+p <- summary_6C %>% 
+  ggplot(aes(x = mean_distance_kb, y = mean_expression)) +
+  geom_ribbon(aes(ymin = pmax(0, mean_expression - sem),
+                  ymax = mean_expression + sem),
+              fill = "steelblue",
+              alpha = 0.2) +
+  geom_line(color = "steelblue", linewidth = 0.8) +
+  geom_point(colour = "steelblue", size = 1) + 
+  labs(title = "Figure 6C Reanalysis",
+       x = "Distance from nearest enhancer (kb)",
+       y = "IR expression") +
+  theme_classic()
+
+p
+
+# save the plot
+ggsave("/Users/cmdb/trip-genomic-context/enhancer-IR/results/figure6C.png",
+       plot = p,
+       width = 7,
+       height = 5)
+
+```
+## Focus on IRs within 30 kb of the nearest enhancer
+use 2kb as bin
+```{r}
+df_30kb <- df %>% 
+  filter(distance >= 0, distance < 30000) %>% 
+  mutate(distance_bin_2kb = floor(distance/2000)+1)
+
+# calculate median IR expression for each pool and distance bin
+pool_summary_30kb <- df_30kb %>% 
+  group_by(pool, distance_bin_2kb) %>% 
+  summarise(median_expression = median(IR_expression),
+            .groups = "drop")
+
+# calculate mean and SEM across pool medians
+summary_30kb <- pool_summary_30kb %>% 
+  group_by(distance_bin_2kb) %>% 
+  summarise(mean_expression = mean(median_expression),
+            sem = sd(median_expression) / sqrt(n()),
+            n_pools = n(),
+            .groups = "drop")
+
+# calculate mean enhancer distance and number of IRs
+distance_summary_30kb <- df_30kb %>% 
+  group_by(distance_bin_2kb) %>% 
+  summarise(mean_distance_kb = mean(distance) / 1000,
+            n_IRs = n(),
+            .groups = "drop")
+summary_30kb <- summary_30kb %>% 
+  left_join(distance_summary_30kb, by = "distance_bin_2kb")
+
+# plot the 0-30 kb region
+p_30kb <- summary_30kb %>% 
+  ggplot(aes(x = mean_distance_kb, y = mean_expression)) +
+  geom_ribbon(aes(ymin = pmax(0, mean_expression - sem),
+                  ymax = mean_expression + sem),
+              fill = "steelblue",
+              alpha = 0.2) +
+  geom_line(color = "steelblue", linewidth = 0.8) +
+  geom_point(colour = "steelblue", size = 1) + 
+  scale_x_continuous(limits = c(0,30),
+                     breaks = seq(0, 30, 2)) +
+  labs(title = "Figure 6C Reanalysis (0-30kb, 2kb bins)",
+       x = "Distance from nearest enhancer (kb)",
+       y = "IR expression") +
+  theme_classic()
+
+p_30kb
+
+# save the result
+write_tsv(summary_30kb, "/Users/cmdb/trip-genomic-context/enhancer-IR/results/figure6C_30kb_2kb_summary.tsv")
+
+ggsave("/Users/cmdb/trip-genomic-context/enhancer-IR/results/figure6C_30kb_2kb.png",
+       plot = p_30kb,
+       width = 7,
+       height = 5)
+
+```
+
