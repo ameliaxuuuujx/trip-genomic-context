@@ -1,3 +1,22 @@
-enhancer-IR/data/processed/6B_gene-windows-mm10.bed
-enhancer-IR/data/processed/6B_gene-window-enhancer-counts-mm10.bed
-enhancer-IR/data/processed/6B_gene-window-intergenic-coverage-mm10.bed
+
+# Rewrite gitignore
+cat > .gitignore << 'EOF'
+.DS_Store
+.DS_Store?
+**/.DS_Store
+.Rhistory
+.RData
+*.gtf
+*.profraw
+*.html
+*.bam
+*.fastq
+*.gz
+EOF
+
+# Check it was written
+cat .gitignore
+
+# Test now
+git check-ignore -v .DS_Store
+git check-ignore -v default.profraw
