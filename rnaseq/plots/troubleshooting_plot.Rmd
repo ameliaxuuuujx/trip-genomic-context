@@ -1,0 +1,149 @@
+---
+title: "rnaseq_plot.Rmd"
+output: html_document
+date: "2026-10-30"
+---
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+
+#read_tables
+C16 <- read.delim("/Users/cmdb/trip-genomic-context/rnaseq/results/bedfiles/IR16_window.bed", header= FALSE, sep="\t")
+C17 <- read.delim("/Users/cmdb/trip-genomic-context/rnaseq/results/bedfiles/IR17_window.bed", header= FALSE, sep="\t")
+C18 <- read.delim("/Users/cmdb/trip-genomic-context/rnaseq/results/bedfiles/IR18_window.bed", header= FALSE, sep="\t")
+C19 <- read.delim("/Users/cmdb/trip-genomic-context/rnaseq/results/bedfiles/IR19_window.bed", header= FALSE, sep="\t")
+C20 <- read.delim("/Users/cmdb/trip-genomic-context/rnaseq/results/bedfiles/IR20_window.bed", header= FALSE, sep="\t")
+C21 <- read.delim("/Users/cmdb/trip-genomic-context/rnaseq/results/bedfiles/IR21_window.bed", header= FALSE, sep="\t")
+C22 <- read.delim("/Users/cmdb/trip-genomic-context/rnaseq/results/bedfiles/IR22_window.bed", header= FALSE, sep="\t")
+C23 <- read.delim("/Users/cmdb/trip-genomic-context/rnaseq/results/bedfiles/IR23_window.bed", header= FALSE, sep="\t")
+C24 <- read.delim("/Users/cmdb/trip-genomic-context/rnaseq/results/bedfiles/IR24_window.bed", header= FALSE, sep="\t")
+C25 <- read.delim("/Users/cmdb/trip-genomic-context/rnaseq/results/bedfiles/IR25_window.bed", header= FALSE, sep="\t")
+C26 <- read.delim("/Users/cmdb/trip-genomic-context/rnaseq/results/bedfiles/IR26_window.bed", header= FALSE, sep="\t")
+
+#put the tables into a list
+tables <- list(C16, C17, C18, C19, C20, C21, C22, C23, C24, C25, C26)
+#Add column names
+new_colnames <- c(
+  # IR bed columns
+  "ir_chr", "ir_start", "ir_end",
+  "ir_name", "ir_score", "ir_strand",
+  # genes bed columns
+  "gene_chr", "gene_start", "gene_end",
+  "gene_name", "gene_score", "gene_strand"
+)
+
+#Label the columns 
+colnames(C16) <- new_colnames
+colnames(C17) <- new_colnames
+colnames(C18) <- new_colnames
+colnames(C19) <- new_colnames
+colnames(C20) <- new_colnames
+colnames(C21) <- new_colnames
+colnames(C22) <- new_colnames
+colnames(C23) <- new_colnames
+colnames(C24) <- new_colnames
+colnames(C25) <- new_colnames
+colnames(C26) <- new_colnames
+
+#Merge tables into one
+combined <- do.call(rbind, lapply(16:26, function(clone) {
+  obj <- get(paste0("C", clone))
+  obj$clone <- clone
+  return(obj)
+}))
+
+#Classify gene as being within, upstream or downstream of IR. I asked HOPGPT which showed a the if then statement.
+#If the IR is 
+combined <- combined %>%
+  mutate(
+    #RAW distance means it is not strand aware yet
+    raw_distance = case_when(
+      ir_start >= gene_start & ir_start <= gene_end ~ 0,
+      ir_start < gene_start ~ ir_start - gene_start,
+      ir_start > gene_end ~ ir_start - gene_end
+    ),
+    # strand aware (+ = downstream), (- = upstream)
+    distance = case_when(
+      raw_distance == 0 ~ 0, #Within gene
+  
+      # Positive strand gene
+      # left of gene = upstream = negative
+      # right of gene = downstream = positive
+      gene_strand == "+" ~ raw_distance,
+      
+      # Negative strand gene
+      # left of gene = downstream = positive
+      # right of gene = upstream = negative
+      gene_strand == "-" ~ -raw_distance
+    ),
+    # Add position label
+    position = case_when(
+      distance == 0 ~ "intragenic",
+      distance > 0 ~ "downstream",
+      distance < 0 ~ "upstream"
+    )
+  )
+
+#Add a column for significance (if holms is less than 0.05)
+#Break up the the gene_name column by '_'
+#ENSID, baseMean, log2FC, lfcSE, pval, padj, gene_name, p_holm
+combined <- combined %>%
+  separate(col = gene_name,
+           into = c("ENSID", "baseMean", "log2FC", "pval", "padj", "p_holm"),
+           sep = "_")
+combined <- combined %>%
+  mutate(
+    log2FC = as.numeric(log2FC),
+    baseMean = as.numeric(baseMean),
+    pval = as.numeric(pval),
+    padj = as.numeric(padj),
+    p_holm = as.numeric(p_holm)
+  )
+#Add significance column
+combined <- combined %>%
+  mutate(sig = ifelse(p_holm < 0.05, 
+                      "significant", 
+                      "not significant")
+```
+
+```{r}
+
+plot_data <- combined %>%
+  filter(!is.na(sig)) %>%
+  filter(!is.infinite(log2FC)) %>%
+  filter(!is.nan(log2FC)) %>%
+  filter(!is.na(log2FC))
+
+# Check
+summary(plot_data$log2FC)
+```
+```{r}
+ggplot(plot_data, aes(x = distance/1000,
+                      y = log2FC,
+                      color = sig)) +
+  geom_point(size = 2) +
+  scale_color_manual(values = c("significant" = "red",
+                                "not significant" = "black"),
+                     labels = c("significant" = "p < 0.05",
+                                "not significant" = "p > 0.05")) +
+  geom_vline(xintercept = 0,
+             color = "grey40",
+             linewidth = 0.5) +
+  labs(title = "Endogenous genes",
+       x = "Distance from IR (kb)",
+       y = "log2 (Fold change)",
+       color = "") +
+  coord_cartesian(xlim = c(-100, 100)) +
+  scale_x_continuous(breaks = c(-100, -50, 0, 50, 100),
+                     labels = c("-100", "-50", "IR", "50", "100")) +
+  theme_classic() +
+  theme(
+    legend.position = c(0.85, 0.85),
+    legend.background = element_rect(color = "black"),
+    plot.title = element_text(hjust = 0.5)
+    
+  )
+```
+
