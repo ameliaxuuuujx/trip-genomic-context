@@ -303,6 +303,9 @@ Script: `scripts/6C.Rmd`
 - `results/figure6C_summary.tsv`
 - `results/figure6C.png`
 
+![Figure 6C Reanalysis](results/figure6C.png)
+
+
 ### 4.6 Explore short-range enhancer effects (0–50 kb)
 
 To further examine the relationship between enhancer proximity and reporter expression, we performed an additional analysis focusing on IRs located within 50 kb of their nearest enhancer.
@@ -320,10 +323,115 @@ This analysis provides a more detailed view of the short-range relationship betw
 - `results/figure6C_50kb_quantile.png`
 
 ![Figure 6C Short-range Analysis](results/figure6C_50kb_quantile.png)
-![Figure 6C Reanalysis](results/figure6C.png)
 
 ### Notes and limitations
 
 - We used ENCODE enhancer-like annotations rather than the H3K4me1, H3K27ac, and p300-based enhancer definitions in the original study.
 - The uneven distribution of enhancer distances resulted in wide distance ranges for some quantile bins.
 - The analysis shows an association between enhancer proximity and reporter expression but does not establish a causal relationship.
+
+
+## Step 5: Reanalyze Figure 6D
+
+**Goal:** Examine the relationship between reporter expression and proximity to endogenous genes after excluding IRs with nearby enhancers.
+
+Figure 6D in the original study investigates whether gene proximity is associated with reporter expression independently of nearby active enhancers. We used the intergenic mPGK IRs identified in Figure 6A, ENCODE enhancer-like annotations from Figure 6B, and the complete gene annotation to reproduce this analysis.
+
+### 5.1 Exclude IRs with enhancers within 50 kb
+
+We started with 8,472 intergenic IRs and excluded those located within 50 kb of any intergenic enhancer-like element using `bedtools window -w 50000 -v`.
+
+| Category | Number of IRs |
+|---|---:|
+| Original intergenic IRs | 8,472 |
+| IRs excluded (enhancer within 50 kb) | 2,836 |
+| **IRs retained** | **5,636** |
+
+**Script:** `scripts/6D_filter_IRs.sh`
+
+### 5.2 Find the nearest gene
+
+For each of the 5,636 retained IRs, we identified the nearest endogenous gene using `bedtools closest -d -t first`.
+
+We used the complete gene annotation containing 37,494 genes, rather than the RNA-seq-filtered gene annotation used in Figure 6A, because Figure 6D does not require endogenous gene expression classification.
+
+All 5,636 IRs were successfully assigned to a nearest gene. In cases of equal distances, only the first matching gene was retained.
+
+**Script:** `scripts/6D_find_nearest_gene.sh`
+
+### 5.3 Assign gene Start/End side
+
+We classified each IR as being on the Start or End side of its nearest gene based on gene orientation and the IR's genomic position.
+
+| Gene side | Number of IRs |
+|---|---:|
+| Start | 2,899 |
+| End | 2,737 |
+| **Total** | **5,636** |
+
+**Script:** `scripts/6D_assign_gene_side.py`
+
+### 5.4 Divide IRs into quantile-based distance bins
+
+We divided IRs into 10 quantile-based distance bins separately for the Start and End sides, with approximately equal numbers of IRs per bin.
+
+| Statistic | Start side | End side |
+|---|---:|---:|
+| Total IRs | 2,899 | 2,737 |
+| Number of bins | 10 | 10 |
+| IRs per bin | 289–290 | 273–274 |
+| Maximum distance | 877.9 kb | 1,123.5 kb |
+
+The distance ranges varied between bins because genomic distances were unevenly distributed.
+
+**Script:** `scripts/6D_make_distance_bins.py`
+
+**Output:** `data/processed/6D_distance-bins-mm10.tsv`
+
+### 5.5 Calculate IR expression and plot Figure 6D
+
+We calculated reporter expression as the ratio of summed expression counts to summed normalization counts across two technical replicates.
+
+For each gene side and distance bin, we calculated the median IR expression within each of the six mPGK pools, followed by the mean and SEM across pool medians.
+
+We plotted mean IR expression against the mean distance from the nearest gene boundary, with shaded regions representing ± SEM.
+
+**Result:** IR expression was highest near gene Start and End boundaries and gradually decreased with increasing distance from genes, even after excluding IRs with enhancers within 50 kb.
+
+This trend is consistent with the general finding of the original Figure 6D, suggesting that gene proximity remains associated with reporter expression independently of the annotated nearby enhancers.
+
+**Script:** `scripts/6D.Rmd`
+
+**Output files:**
+- `results/figure6D_summary.tsv`
+- `results/figure6D.png`
+
+![Figure 6D Reanalysis](results/figure6D.png)
+
+### 5.6 Explore short-range gene proximity effects (0–50 kb)
+
+To examine gene proximity effects at shorter distances, we performed an additional analysis focusing on IRs located within 50 kb of their nearest gene boundary.
+
+We divided the retained IRs into 10 quantile-based distance bins separately for the Start and End sides. For each bin, we calculated the median IR expression within each mPGK pool, followed by the mean and SEM across the six pool medians.
+
+**Result:** Reporter expression increased substantially as IRs approached gene boundaries on both sides. The Start side showed a particularly strong increase within the closest distance bins, while the End side exhibited a similar overall trend with some local fluctuations.
+
+This short-range analysis provides a more detailed view of the relationship between gene proximity and reporter expression.
+
+**Script:** `scripts/6D.Rmd`
+
+**Output files:**
+- `results/figure6D_50kb_quantile_summary.tsv`
+- `results/figure6D_50kb_quantile.png`
+
+![Figure 6D Short-range Reanalysis](results/figure6D_50kb_quantile.png)
+
+### Notes and limitations
+
+- The original study used active enhancers identified through H3K4me1, H3K27ac, and p300 occupancy, whereas we used ENCODE dELS and pELS annotations.
+- Our enhancer filtering was restricted to intergenic enhancer-like elements, so some regulatory elements near IRs may not have been excluded.
+- The original Figure 6D included 899 IRs, whereas our initial enhancer filtering retained 5,636 IRs. The difference may reflect differences in enhancer annotations and filtering criteria.
+- We used `bedtools window` to exclude IRs within 50 kb of enhancer intervals and `bedtools closest` to calculate distances to the nearest annotated genes.
+- The short-range analysis used quantile bins recalculated within 0–50 kb, rather than simply truncating the full-distance analysis.
+
+Overall, both analyses showed that IR expression was positively associated with proximity to endogenous genes, even after excluding IRs with annotated enhancers within 50 kb.
