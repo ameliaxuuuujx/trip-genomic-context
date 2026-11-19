@@ -1,3 +1,9 @@
+# Figure 6B intermediate BED files
+enhancer-IR/data/processed/6B_random-nearest-boundary-mm10.bed
+enhancer-IR/data/processed/6B_gene-windows-mm10.bed
+enhancer-IR/data/processed/6B_intergenic-random-nearest-boundary-mm10.bed
+enhancer-IR/data/processed/6B_gene-window-enhancer-counts-mm10.bed
+enhancer-IR/data/processed/6B_gene-window-intergenic-coverage-mm10.bed
 
 # Rewrite gitignore
 cat > .gitignore << 'EOF'

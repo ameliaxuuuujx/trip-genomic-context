@@ -44,6 +44,8 @@ df <- df %>%
          IR_expression = if_else(gdna > 0, cdna / gdna, NA_real_))
 
 summary(df$IR_expression)
+
+write_tsv(df, "/Users/cmdb/trip-genomic-context/enhancer-IR/results/figure6A_IRexpression.tsv")
 ```
 
 ## Step 4: Calculate median IR expression for each pool and bin

@@ -3,19 +3,24 @@
 Load library and data
 ```{r}
 library(tidyverse)
-df <- read_tsv("/Users/cmdb/trip-genomic-context/enhancer-IR/results/figure6B_summary.tsv") 
+df <- read_tsv("/Users/cmdb/trip-genomic-context/enhancer-IR/data/processed/6B_relative-enhancer-frequency-mm10.tsv") 
 ```
 
-Put Start on the left and End on the right
-```{r}
-df <- df %>% 
-  mutate(x = if_else(side == "Start",
-                     -distance_kb - 30, distance_kb + 30))
-```
 
-Plot relative enhancer frequency around genes
+
+Plot relative enhancer frequency around genes (genome-wide)
 ```{r}
-p <- df %>% 
+df_genowide <- df %>%
+  filter(background == "genome_wide") %>%
+  mutate(
+    x = if_else(
+      side == "Start",
+      -30 - distance_midpoint_kb,
+      30 + distance_midpoint_kb
+    )
+  )
+
+p_geno <- df_genowide %>%
   ggplot(aes(x = x, y = relative_frequency, group = side)) +
   # highlight the gene body
   annotate("rect",
@@ -24,28 +29,100 @@ p <- df %>%
            fill = "grey90") +
   geom_line(color = "steelblue", linewidth = 0.8) +
   geom_point(color = "steelblue", size = 1) +
-  # expected background frequency (relative frequency =1)
+  # expected background frequency (relative frequency = 1)
   geom_hline(yintercept = 1, linetype = "dashed") +
-  annotate("text", 
+  annotate("text",
            x = 0, y = 0.15,
-           label = "Gene", size = 4)+
-  # labe distances relative to gene Start and End
-  scale_x_continuous(breaks = c(-230, -130, -30, 30, 130, 230),
-                     label = c("-200", "-100", "Start", "End", "100", "200")) +
+           label = "Gene", size = 4) +
+  # label distances relative to gene Start and End
+  scale_x_continuous(
+    breaks = c(-230, -130, -30, 30, 130, 230),
+    labels = c("-200", "-100", "Start", "End", "100", "200")
+  ) +
   coord_cartesian(xlim = c(-240, 240)) +
-  labs(title = "Figure 6B reanalysis",
-       x = "Distance from gene (kb)",
-       y = "Relative enhancer frequency") +
+  labs(
+    title = "Figure 6B reanalysis (genome-wide)",
+    x = "Distance from gene (kb)",
+    y = "Relative enhancer frequency"
+  ) +
   theme_classic()
 
-p
+p_geno
+```
+
+Plot relative enhancer frequency around genes (intergenic-only)
+```{r}
+df_intergenic <- df %>%
+  filter(background == "intergenic_only") %>%
+  mutate(
+    x = if_else(
+      side == "Start",
+      -30 - distance_midpoint_kb,
+      30 + distance_midpoint_kb
+    )
+  )
+
+p_inter <- df_intergenic %>%
+  ggplot(aes(x = x, y = relative_frequency, group = side)) +
+  # highlight the gene body
+  annotate("rect",
+           xmin = -30, xmax = 30,
+           ymin = 0, ymax = Inf,
+           fill = "grey90") +
+  geom_line(color = "steelblue", linewidth = 0.8) +
+  geom_point(color = "steelblue", size = 1) +
+  # expected background frequency (relative frequency = 1)
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  annotate("text",
+           x = 0, y = 0.15,
+           label = "Gene", size = 4) +
+  # label distances relative to gene Start and End
+  scale_x_continuous(
+    breaks = c(-230, -130, -30, 30, 130, 230),
+    labels = c("-200", "-100", "Start", "End", "100", "200")
+  ) +
+  coord_cartesian(xlim = c(-240, 240)) +
+  labs(
+    title = "Figure 6B reanalysis (intergenic-only)",
+    x = "Distance from gene (kb)",
+    y = "Relative enhancer frequency"
+  ) +
+  theme_classic()
+
+p_inter
 ```
 Save the result
 ```{r}
 # Save the plot
-ggsave("/Users/cmdb/trip-genomic-context/enhancer-IR/results/figure6B.png",
-       plot = p,
+ggsave("/Users/cmdb/trip-genomic-context/enhancer-IR/results/figure6B_genomewide.png",
+       plot = p_geno,
        width = 8,
        height = 5)
+ggsave("/Users/cmdb/trip-genomic-context/enhancer-IR/results/figure6B_intergeniconly.png",
+       plot = p_inter,
+       width = 8,
+       height = 5)
+
+# Save the summary data
+
+summary_df <- df %>%
+  select(
+    background,
+    side,
+    distance_start_bp,
+    distance_end_bp,
+    distance_midpoint_kb,
+    observed_count,
+    expected_count,
+    observed_frequency,
+    expected_frequency,
+    relative_frequency
+  )
+
+write_tsv(
+  summary_df,
+  "/Users/cmdb/trip-genomic-context/enhancer-IR/results/figure6B_summary.tsv"
+)
+
 ```
 

@@ -98,7 +98,7 @@ Scripts: `6A.Rmd`
 
 **Goal:** Examine the distribution of active enhancer-like elements around endogenous genes and determine whether enhancers are enriched near gene boundaries.
 
-Figure 6B in the original study shows the relative frequency of active intergenic enhancers around endogenous genes. To reproduce this analysis, we used ENCODE candidate cis-regulatory elements (cCREs) as an alternative source of enhancer annotations.
+Figure 6B in the original study shows the relative frequency of active intergenic enhancers around endogenous genes. We used ENCODE candidate cis-regulatory elements (cCREs) as an alternative enhancer annotation dataset and calculated enhancer enrichment relative to randomly sampled genomic positions.
 
 ### 3.1 Filter enhancer-like elements
 
@@ -118,7 +118,7 @@ Script: `scripts/6B_filter_enhancers.py`
 
 ### 3.2 Identify intergenic enhancers
 
-Since Figure 6B focuses on active intergenic enhancers, we excluded enhancer-like elements overlapping annotated gene bodies using `bedtools intersect -v`.
+We excluded enhancer-like elements overlapping annotated gene bodies using `bedtools intersect -v`.
 
 - Input: 17,235 enhancer-like elements
 - Output: **7,871 intergenic enhancer-like elements**
@@ -126,91 +126,127 @@ Since Figure 6B focuses on active intergenic enhancers, we excluded enhancer-lik
 
 Script: `scripts/6B_find_intergenic_enhancers.sh`
 
-### 3.3 Generate gene-centered windows
+### 3.3 Calculate distances from enhancers to the nearest gene boundary
 
-We generated 10 kb non-overlapping windows extending 200 kb outward from both the Start and End boundaries of each gene, accounting for gene orientation.
-
-- Each gene contributes up to 20 windows on each side (40 windows total).
-- Windows extending entirely beyond chromosome position 0 were excluded.
-- The original set of 37,494 annotated genes was used.
+We extracted the midpoint of each intergenic enhancer and the Start and End boundaries of each annotated gene.
 
 | Statistic | Number |
 |---|---:|
 | Genes processed | 37,494 |
-| Expected windows (40 per gene) | 1,499,760 |
-| Windows generated | 1,498,514 |
-| Windows excluded | 1,246 |
+| Gene boundaries (Start + End) | 74,988 |
+| Enhancer midpoints | 7,871 |
 
-The 1,246 missing windows were excluded because they fell outside the beginning of their chromosomes.
+We used `bedtools closest -d -t first` to identify the nearest gene boundary for each enhancer midpoint and calculate the distance in base pairs.
 
-Script: `scripts/6B_make_gene_windows.py`
+All 7,871 enhancers were assigned to a nearest gene boundary.
 
-### 3.4 Count enhancers in each window
+Scripts:
+- `scripts/6B_prepare_distances.py`
+- `scripts/6B_find_nearest_boundary.sh`
 
-We used `bedtools intersect -c` to count the number of intergenic enhancer-like elements overlapping each 10 kb window.
+### 3.4 Generate a random genomic background
 
-| Statistic | Number |
+Following the approach described in the original study, we generated **1,000,000 random genomic positions** using `bedtools random` with the mm10 chromosome sizes file and a fixed random seed (42).
+
+We then used `bedtools closest` to calculate the distance from each random position to its nearest gene Start or End boundary.
+
+Of the 1,000,000 random positions, 968 were located on additional scaffolds without matching gene boundary annotations and were excluded from the distance analysis.
+
+We also generated an intergenic-only background by excluding random positions overlapping annotated gene bodies.
+
+| Background dataset | Valid positions |
 |---|---:|
-| Total windows | 1,498,514 |
-| Windows without enhancers | 1,451,858 |
-| Windows with at least one enhancer | 46,656 |
-| Total enhancer-window overlaps | 88,951 |
-| Maximum enhancers per window | 12 |
+| Genome-wide random positions | 999,032 |
+| Intergenic-only random positions | 616,203 |
+| Positions excluded due to missing gene boundaries | 968 |
 
-Approximately **3.1% of windows** contained at least one enhancer-like element.
+The genome-wide random background was used for the primary analysis, while the intergenic-only background was used for a sensitivity analysis.
 
-Note that the total number of overlaps (88,951) is not the number of unique enhancers, since the same enhancer may overlap windows associated with multiple genes.
-
-Script: `scripts/6B_count_enhancers.sh`
+Script: `scripts/6B_random_background.sh`
 
 ### 3.5 Calculate relative enhancer frequency
 
-To estimate enhancer enrichment, we calculated the observed enhancer density for each distance bin and normalized it against the genome-wide intergenic enhancer density.
+We divided distances from the nearest gene boundary into **10 kb bins**, covering 0–200 kb, and analyzed Start and End boundaries separately.
 
-**Background calculation**
+For each bin, we calculated:
 
-We downloaded mm10 chromosome sizes and used `bedtools merge` and `bedtools complement` to exclude annotated gene bodies and identify intergenic genomic regions.
+- **Observed frequency:** Number of enhancers in the bin divided by the total number of enhancers assigned to that boundary type.
+- **Expected frequency:** Number of random positions in the bin divided by the total number of valid random positions assigned to that boundary type.
+- **Relative enhancer frequency:** Observed frequency divided by expected frequency.
 
-| Statistic | Value |
-|---|---:|
-| Intergenic regions | 28,274 |
-| Intergenic enhancer-like elements | 7,871 |
-| Total intergenic genome length | 1,684,362,606 bp |
-| Background enhancer density | 4.673 × 10⁻⁶ enhancers/bp |
+A relative frequency of 1 represents the expected frequency under the selected random background model.
 
-**Relative frequency calculation**
+We calculated relative frequencies using both genome-wide and intergenic-only random backgrounds.
 
-For each distance bin:
+**Results for the 0–10 kb distance bin:**
 
-- Observed enhancer density = Total enhancer-window overlaps / Total valid window length
-- Background enhancer density = Total intergenic enhancers / Total intergenic genome length
-- Relative enhancer frequency = Observed density / Background density
+| Background | Start | End |
+|---|---:|---:|
+| Genome-wide | 2.43 | 1.75 |
+| Intergenic-only | 3.09 | 2.27 |
 
-A relative frequency of 1 represents the genome-wide intergenic background expectation, while values above 1 indicate enrichment relative to this reference.
+Under both background models, enhancer-like elements were enriched within 10 kb of gene boundaries. The enrichment was stronger near gene Starts than gene Ends.
+
+Using the genome-wide background, relative enhancer frequency on the Start side decreased from 2.43 at 0–10 kb to approximately 1.01 at 10–20 kb and 0.70 at 20–30 kb.
 
 Scripts:
-- `scripts/6B_prepare_background.sh`
 - `scripts/6B_calculate_relative_frequency.py`
+
+Output:
+- `data/processed/6B_relative-enhancer-frequency-mm10.tsv`
 
 ### 3.6 Plot Figure 6B
 
-We plotted relative enhancer frequency against distance from gene boundaries, displaying Start and End regions on opposite sides of a schematic gene body.
+**In progress.**
 
-- X-axis: Distance from gene Start or End (kb)
-- Y-axis: Relative enhancer frequency
-- Dashed horizontal line (y = 1): Genome-wide intergenic background expectation
+We will plot relative enhancer frequency against distance from the nearest gene Start or End boundary, using the genome-wide random background for the main figure and the intergenic-only background for comparison.
 
-Script: `scripts/6B_plot.R`
+The horizontal reference line at y = 1 will indicate the expected frequency under the corresponding random background.
 
-![Figure 6B Reanalysis](results/figure6B.png)
+Planned output:
+- `results/figure6B.png`
 
 ### Notes and limitations
 
-This analysis is an approximate reanalysis rather than an exact reproduction of the original Figure 6B.
+This analysis is a reanalysis rather than an exact reproduction of the original Figure 6B.
 
 - The original study identified active enhancers using H3K4me1, H3K27ac, and p300 occupancy, whereas we used ENCODE dELS and pELS annotations.
-- We used fixed 10 kb windows extending 200 kb from gene boundaries.
-- We defined the background as genome-wide intergenic enhancer density. The exact normalization method used in the original study has not yet been confirmed.
-- The observed enhancer density was calculated using total valid window length, which may include portions overlapping other gene bodies. Gene-centered windows can also overlap one another.
+- Our revised method follows the original study's random-coordinate approach, rather than the genome-wide intergenic enhancer density normalization used in our initial analysis.
+- We used fixed 10 kb distance bins over 0–200 kb. The exact binning and normalization details may differ from those used in the original figure.
+- Relative frequencies were calculated separately for the nearest Start and End boundary categories.
+- Our observed enhancers were restricted to intergenic regions, whereas the genome-wide random background also included positions within gene bodies. We therefore calculated an intergenic-only background as a sensitivity analysis.
+- Our distance calculations used `bedtools closest -d`, which reports BED interval distances and may differ slightly from direct coordinate differences.
 
-Therefore, the resulting relative frequencies should be interpreted as estimates of enhancer enrichment under our chosen annotation and background model, rather than directly comparable numerical values from the original publication.
+The revised analysis shows enrichment of enhancer-like elements near gene boundaries under both background models. However, enrichment magnitudes depend on the background definition and enhancer annotation dataset.
+
+## Step 4: Reanalyze Figure 6C
+
+### Prepare input
+- 8,472 unique intergenic IRs：与 Figure 6A 的结果一致。
+- 37,494 gene TSS records：与我们转换到 mm10 的 gene annotation 数量一致。
+
+### 4.2 Exclude IRs within 50 kb of any TSS
+统计项目	IR 数量
+Original intergenic IRs	8,472
+IRs excluded (within 50 kb of a TSS)	5,408
+IRs retained	3,064
+
+### 4.3 find the nearest enhancer
+3,064 个 IR 都成功找到了最近的 enhancer
+
+### 4.4 make distance bins
+Excluded IRs without matching enhancers: 6
+Total valid IRs: 3058
+Distance bins: 10
+Bin 1: 306 IRs, distance 0–9660 bp
+Bin 2: 306 IRs, distance 9687–53332 bp
+Bin 3: 306 IRs, distance 53466–127600 bp
+Bin 4: 306 IRs, distance 127812–218536 bp
+Bin 5: 305 IRs, distance 218563–352017 bp
+Bin 6: 306 IRs, distance 352146–526022 bp
+Bin 7: 306 IRs, distance 526637–770635 bp
+Bin 8: 306 IRs, distance 771802–1054326 bp
+Bin 9: 306 IRs, distance 1057243–1628891 bp
+Bin 10: 305 IRs, distance 1631519–7717190 bp
+
+### 4.5 plot reanalyzed figure 6C

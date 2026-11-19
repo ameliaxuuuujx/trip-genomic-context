@@ -32,7 +32,7 @@ We divided the work between team members, with Amelia focusing on Figures 6A–6
 
 ## 4. Challenges and Questions
 
-- **Figrue 6A**: We could not identify the exact endogenous gene expression dataset used in the original Figure 6A. Instead, we used RNA-seq data from 11 monoclonal mESC lines provided for Figure 6E. This resulted in different proportions of expressed and non-expressed genes compared with the published results. We would appreciate advice on whether this is an appropriate alternative or whether another dataset would be more suitable.
+- **Figure 6A**: We could not identify the exact endogenous gene expression dataset used in the original Figure 6A. Instead, we used RNA-seq data from 11 monoclonal mESC lines provided for Figure 6E. This resulted in different proportions of expressed and non-expressed genes compared with the published results. We would appreciate advice on whether this is an appropriate alternative or whether another dataset would be more suitable.
 
 - **Figure 6B**: In our reanalysis, the relative enhancer frequency remained above the background level (y = 1) across all distance bins, even at larger distances from genes. We used genome-wide intergenic enhancer density as the background, but this may not accurately represent the expected enhancer frequency around genes. We would appreciate advice on whether a random genomic background would be more appropriate.
 

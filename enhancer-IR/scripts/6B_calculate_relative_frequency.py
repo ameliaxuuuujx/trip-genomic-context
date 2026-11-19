@@ -1,111 +1,136 @@
 #!/usr/bin/env python3
 
 import csv
+import subprocess
+from pathlib import Path
 
-base = "/Users/cmdb/trip-genomic-context/enhancer-IR"
+BASE = Path("/Users/cmdb/trip-genomic-context/enhancer-IR")
+DATA = BASE / "data/processed"
 
-counts_file = base + "/data/processed/6B_gene-window-enhancer-counts-mm10.bed"
-enhancer_file = base + "/data/processed/6B_intergenic-enhancers-mm10.bed"
-background_file = base + "/data/processed/6B_intergenic-background-mm10.bed"
-sizes_file = base + "/data/raw/mm10.chrom.sizes"
+OBSERVED = DATA / "6B_enhancer-nearest-boundary-mm10.bed"
+RANDOM = DATA / "6B_random-nearest-boundary-mm10.bed"
+GENES = DATA / "genes-mm10-from-mm9.bed"
 
-output_file = base + "/results/figure6B_summary.tsv"
+INTERGENIC_RANDOM = DATA / "6B_intergenic-random-nearest-boundary-mm10.bed"
+OUTPUT = DATA / "6B_relative-enhancer-frequency-mm10.tsv"
 
-# Read chromosome sizes
-chrom_sizes = {}
+BIN_SIZE = 10000
+MAX_DISTANCE = 200000
 
-with open(sizes_file) as f:
-    for line in f:
-        chrom, size = line.strip().split("\t")
-        chrom_sizes[chrom] = int(size)
 
-# Calculate intergenic genome length
-intergenic_bp = 0
+# Step 1: Keep only intergenic random positions
+with open(INTERGENIC_RANDOM, "w") as out:
+    subprocess.run(
+        [
+            "bedtools", "intersect",
+            "-a", str(RANDOM),
+            "-b", str(GENES),
+            "-v"
+        ],
+        stdout=out,
+        check=True
+    )
 
-with open(background_file) as f:
-    for line in f:
-        columns = line.strip().split("\t")
-        intergenic_bp += int(columns[2]) - int(columns[1])
 
-# Count enhancers
-enhancer_count = 0
+# Step 2: Read nearest-boundary distances
+def read_distances(filename):
+    distances = {"Start": [], "End": []}
 
-with open(enhancer_file) as f:
-    for line in f:
-        if line.strip():
-            enhancer_count += 1
+    with open(filename) as f:
+        for line in f:
+            cols = line.rstrip("\n").split("\t")
 
-# Expected enhancer density
-background_density = enhancer_count / intergenic_bp
+            side = cols[-2]
+            distance = int(cols[-1])
 
-print("Intergenic enhancers:", enhancer_count)
-print("Intergenic genome length:", intergenic_bp)
-print("Background density:", background_density)
+            if side in distances and distance >= 0:
+                distances[side].append(distance)
 
-# Summarize enhancer counts by side and distance bin
-results = {}
+    return distances
 
-with open(counts_file) as f:
-    for line in f:
-        columns = line.strip().split("\t")
 
-        chrom = columns[0]
-        start = int(columns[1])
-        end = int(columns[2])
-        side = columns[4]
-        distance_bin = int(columns[5])
-        count = int(columns[6])
+observed = read_distances(OBSERVED)
+random_all = read_distances(RANDOM)
+random_intergenic = read_distances(INTERGENIC_RANDOM)
 
-        if chrom not in chrom_sizes:
-            continue
 
-        # Correct window length at chromosome boundaries
-        start = max(0, start)
-        end = min(end, chrom_sizes[chrom])
+# Step 3: Count positions in distance bins
+def count_bins(values):
+    counts = [0] * (MAX_DISTANCE // BIN_SIZE)
 
-        length = end - start
+    for distance in values:
+        if 0 <= distance < MAX_DISTANCE:
+            bin_index = distance // BIN_SIZE
+            counts[bin_index] += 1
 
-        if length <= 0:
-            continue
+    return counts
 
-        key = (side, distance_bin)
 
-        if key not in results:
-            results[key] = [0, 0, 0]
+# Step 4: Calculate observed/expected frequency
+results = []
 
-        results[key][0] += count
-        results[key][1] += length
-        results[key][2] += 1
+backgrounds = {
+    "genome_wide": random_all,
+    "intergenic_only": random_intergenic
+}
 
-# Calculate relative frequency
-with open(output_file, "w", newline="") as f:
-    writer = csv.writer(f, delimiter="\t")
+for background_name, background in backgrounds.items():
+    for side in ["Start", "End"]:
 
-    writer.writerow([
-        "side",
-        "distance_bin",
-        "distance_kb",
-        "enhancer_count",
-        "window_count",
-        "observed_density",
-        "relative_frequency"
-    ])
+        obs = observed[side]
+        exp = background[side]
 
-    for side, distance_bin in sorted(results):
-        count, total_bp, n_windows = results[(side, distance_bin)]
+        obs_counts = count_bins(obs)
+        exp_counts = count_bins(exp)
 
-        observed_density = count / total_bp
-        relative_frequency = observed_density / background_density
-        distance_kb = (distance_bin - 0.5) * 10
+        for i in range(len(obs_counts)):
+            start = i * BIN_SIZE
+            end = start + BIN_SIZE
 
-        writer.writerow([
-            side,
-            distance_bin,
-            distance_kb,
-            count,
-            n_windows,
-            observed_density,
-            relative_frequency
-        ])
+            observed_frequency = obs_counts[i] / len(obs)
+            expected_frequency = exp_counts[i] / len(exp)
 
-print("Output:", output_file)
+            if expected_frequency > 0:
+                relative_frequency = (
+                    observed_frequency / expected_frequency
+                )
+            else:
+                relative_frequency = float("nan")
+
+            results.append({
+                "background": background_name,
+                "side": side,
+                "distance_start_bp": start,
+                "distance_end_bp": end,
+                "distance_midpoint_kb": (start + end) / 2000,
+                "observed_count": obs_counts[i],
+                "expected_count": exp_counts[i],
+                "observed_frequency": observed_frequency,
+                "expected_frequency": expected_frequency,
+                "relative_frequency": relative_frequency
+            })
+
+
+# Step 5: Save results
+with open(OUTPUT, "w", newline="") as f:
+    writer = csv.DictWriter(f, fieldnames=results[0].keys(), delimiter="\t")
+    writer.writeheader()
+    writer.writerows(results)
+
+
+# Step 6: Print summary
+print("Figure 6B relative frequency calculation completed.")
+
+for side in ["Start", "End"]:
+    print(f"Observed {side}: {len(observed[side])}")
+    print(f"Random genome-wide {side}: {len(random_all[side])}")
+    print(f"Random intergenic {side}: {len(random_intergenic[side])}")
+
+print("Total random positions:", sum(map(len, random_all.values())))
+print(
+    "Intergenic random positions:",
+    sum(map(len, random_intergenic.values()))
+)
+
+print("Distance bins per side:", MAX_DISTANCE // BIN_SIZE)
+print("Output:", OUTPUT)
