@@ -197,14 +197,21 @@ Output:
 
 ### 3.6 Plot Figure 6B
 
-**In progress.**
+We plotted relative enhancer frequency against distance from the nearest gene Start or End boundary, using two background models.
 
-We will plot relative enhancer frequency against distance from the nearest gene Start or End boundary, using the genome-wide random background for the main figure and the intergenic-only background for comparison.
+Both backgrounds showed enrichment of intergenic enhancer-like elements near gene boundaries, with stronger enrichment near gene Starts than gene Ends. Relative enhancer frequency generally decreased with increasing distance from gene boundaries.
 
-The horizontal reference line at y = 1 will indicate the expected frequency under the corresponding random background.
+The intergenic-only background produced higher enrichment values than the genome-wide background, but the overall trends were similar.
 
-Planned output:
-- `results/figure6B.png`
+![](results/figure6B_genomewide.png)
+![](results/figure6B_intergeniconly.png)
+
+**Script:** `scripts/6B.Rmd`
+
+**Output files:**
+- `results/figure6B_genomewide.png`
+- `results/figure6B_intergeniconly.png`
+- `results/figure6B_summary.tsv`
 
 ### Notes and limitations
 
@@ -221,32 +228,102 @@ The revised analysis shows enrichment of enhancer-like elements near gene bounda
 
 ## Step 4: Reanalyze Figure 6C
 
-### Prepare input
-- 8,472 unique intergenic IRs：与 Figure 6A 的结果一致。
-- 37,494 gene TSS records：与我们转换到 mm10 的 gene annotation 数量一致。
+**Goal:** Examine the relationship between reporter expression and distance to the nearest enhancer, independently of proximity to endogenous gene transcription start sites (TSSs).
 
-### 4.2 Exclude IRs within 50 kb of any TSS
-统计项目	IR 数量
-Original intergenic IRs	8,472
-IRs excluded (within 50 kb of a TSS)	5,408
-IRs retained	3,064
+### 4.1 Prepare input data
 
-### 4.3 find the nearest enhancer
-3,064 个 IR 都成功找到了最近的 enhancer
+We used the processed TRIP integration sites and gene annotations from Figure 6A, together with the intergenic enhancer-like elements identified in Figure 6B.
 
-### 4.4 make distance bins
-Excluded IRs without matching enhancers: 6
-Total valid IRs: 3058
-Distance bins: 10
-Bin 1: 306 IRs, distance 0–9660 bp
-Bin 2: 306 IRs, distance 9687–53332 bp
-Bin 3: 306 IRs, distance 53466–127600 bp
-Bin 4: 306 IRs, distance 127812–218536 bp
-Bin 5: 305 IRs, distance 218563–352017 bp
-Bin 6: 306 IRs, distance 352146–526022 bp
-Bin 7: 306 IRs, distance 526637–770635 bp
-Bin 8: 306 IRs, distance 771802–1054326 bp
-Bin 9: 306 IRs, distance 1057243–1628891 bp
-Bin 10: 305 IRs, distance 1631519–7717190 bp
+- **8,472 unique intergenic IRs**
+- **37,494 gene TSS positions**, derived from the mm10 gene annotation
+- **7,871 intergenic enhancer-like elements**, obtained from ENCODE dELS and pELS annotations
 
-### 4.5 plot reanalyzed figure 6C
+Script: `scripts/6C_prepare_inputs.py`
+
+### 4.2 Exclude IRs within 50 kb of gene TSSs
+
+To reduce the influence of endogenous promoters, we excluded intergenic IRs located within 50 kb of any annotated gene TSS using `bedtools window`.
+
+| Category | Number of IRs |
+|---|---:|
+| Original intergenic IRs | 8,472 |
+| IRs excluded (within 50 kb of a TSS) | 5,408 |
+| IRs retained | 3,064 |
+
+Script: `scripts/6C_filter_IRs.sh`
+
+### 4.3 Find the nearest enhancer
+
+For each retained IR, we used `bedtools closest -d` to calculate the distance to the nearest intergenic enhancer-like element.
+
+- IRs analyzed: 3,064
+- IRs without a matching enhancer: 6
+- **Valid IRs retained for distance analysis: 3,058**
+
+Script: `scripts/6C_find_nearest_enhancer.sh`
+
+### 4.4 Divide IRs into distance bins
+
+We divided the 3,058 valid IRs into **10 quantile-based distance bins**, with approximately equal numbers of IRs per bin (305–306).
+
+This follows the equal-count binning strategy used in the original study.
+
+| Bin | Number of IRs | Distance range (kb) |
+|---|---:|---|
+| 1 | 306 | 0–9.7 |
+| 2 | 306 | 9.7–53.3 |
+| 3 | 306 | 53.5–127.6 |
+| 4 | 306 | 127.8–218.5 |
+| 5 | 305 | 218.6–352.0 |
+| 6 | 306 | 352.1–526.0 |
+| 7 | 306 | 526.6–770.6 |
+| 8 | 306 | 771.8–1,054.3 |
+| 9 | 306 | 1,057.2–1,628.9 |
+| 10 | 305 | 1,631.5–7,717.2 |
+
+Because enhancer distances were unevenly distributed, the bins covered different distance ranges.
+
+Script: `scripts/6C_make_distance_bins.py`
+
+### 4.5 Calculate IR expression and plot Figure 6C
+
+We calculated reporter expression as the ratio of summed cDNA counts to summed gDNA counts across two technical replicates.
+
+For each distance bin:
+
+- We calculated the median IR expression within each of the six mPGK TRIP pools.
+- We calculated the mean and standard error of the mean (SEM) across the six pool medians.
+- We plotted mean IR expression against the mean enhancer distance within each bin, with the shaded region representing ± SEM.
+
+**Result:** IR expression was highest near enhancer-like elements and generally decreased with increasing enhancer distance. This association remained observable after excluding IRs within 50 kb of annotated gene TSSs.
+
+Script: `scripts/6C.Rmd`
+
+**Output files:**
+- `results/figure6C_summary.tsv`
+- `results/figure6C.png`
+
+### 4.6 Explore short-range enhancer effects (0–50 kb)
+
+To further examine the relationship between enhancer proximity and reporter expression, we performed an additional analysis focusing on IRs located within 50 kb of their nearest enhancer.
+
+We divided these IRs into 10 quantile-based distance bins, with approximately equal numbers of IRs per bin. For each bin, we calculated the median reporter expression within each of the six mPGK pools, followed by the mean and SEM across pool medians.
+
+Reporter expression showed considerable fluctuations at shorter distances, but generally decreased with increasing enhancer distance. The SEM was relatively large in several bins, indicating variability among pool-level expression summaries.
+
+This analysis provides a more detailed view of the short-range relationship between enhancer proximity and reporter expression.
+
+**Script:** `scripts/6C.Rmd`
+
+**Output files:**
+- `results/figure6C_50kb_quantile_summary.tsv`
+- `results/figure6C_50kb_quantile.png`
+
+![Figure 6C Short-range Analysis](results/figure6C_50kb_quantile.png)
+![Figure 6C Reanalysis](results/figure6C.png)
+
+### Notes and limitations
+
+- We used ENCODE enhancer-like annotations rather than the H3K4me1, H3K27ac, and p300-based enhancer definitions in the original study.
+- The uneven distribution of enhancer distances resulted in wide distance ranges for some quantile bins.
+- The analysis shows an association between enhancer proximity and reporter expression but does not establish a causal relationship.
