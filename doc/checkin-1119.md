@@ -16,21 +16,35 @@ For Figure 6E, (1) No, we did not confine analysis to only the nearest gene to t
 
 **Figure 6E:** Last check in, the largest concern for this plot was that the plot did not look like the published figure (many zeros at the X axis, and notably significant dots not enriched at IR). While My plot still does not match the published figure, I think the plot has improved. The most supstantial improvement (Fix 1) was doing multiple hypothesis testing only on the genes shown in the plot, rather than the entire transcriptome. This led to the expected enrichment of significant genes in close proximity to the IRs. Now, the main concerns are (1) the many zeros at the X axis, (2) much fewer genes (3) less nonsignificant gene enrichment around the IR. The reason I would expect (3) is that the piggybac transposon has a known bias to gene rich regions (PMID: 23358416). These concerns are still being adressed, but these are the changes were tested and considered:
 
-+--------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Change to plot                                                                                                                       | Reason                                                                                                          | Effect on plot                                                                                                                                                   |
-+======================================================================================================================================+=================================================================================================================+==================================================================================================================================================================+
-| Apply Holm's method for multiple hypothesis testing *after* filtering to genes in the window surrounding the IRs (instead of before) | Reduce the multiple-testing burden by applying correction only to the genes being visualized in the IR window   | See 'Fix1'                                                                                                                                                       |
-+--------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Subset to 'expressed' genes only, using `gene-expression-status.tsv`                                                                 | Reduce the accumulation of zeros along the x-axis                                                               | No effect; all genes in the plotting data were already in the 'expressed' category                                                                               |
-+--------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Remove the shrinkage step from DESeq2                                                                                                | Shrinkage was not mentioned in the methods, and assuming it in my reanalysis may have changed the log2FC values | No visible effect, which was unexpected; I am checking my scripts to confirm the rerun was applied correctly                                                     |
-+--------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Filter out genes with \|log2FC\| \< 0.01 (for visualization only, not the final plot)                                                | See how the plot looks without the many genes with log2FC close to zero                                         | See 'Fix2'. Not intended for the final plot, but it shows that many of my plotted genes differ from the published figure because they have smaller log2FC values |
-+--------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Remove genes that overlap with IRs                                                                                                   | this was done in the main figure and not yet updated in reproduced figure                                       | When I did this, the enrichment of genes near IRs disappeared! Only 2 significant IRs remained.                                                                  |
-|                                                                                                                                      |                                                                                                                 |                                                                                                                                                                  |
-|                                                                                                                                      |                                                                                                                 | See 'Fix3'                                                                                                                                                       |
-+--------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+- Change: Apply Holm's method for multiple hypothesis testing *after* filtering to genes in the window surrounding the IRs (instead of before)
+
+  - Reason: Reduce the multiple-testing burden by applying correction only to the genes being visualized in the IR window
+
+  - Effect: increased sig genes See 'Fix1'
+
+- Subset to 'expressed' genes only, using `gene-expression-status.tsv`
+
+  - Reason: Reduce the accumulation of zeros along the x-axis
+
+  - Effect: No effect; all genes in the plotting data were already in the 'expressed' category
+
+- Remove the shrinkage step from DESeq2
+
+  - Reason: Shrinkage was not mentioned in the methods, and assuming it in my reanalysis may have changed the log2FC values
+
+  - Effect: No visible effect, which was unexpected; I am checking my scripts to confirm the rerun was applied correctly
+
+- Filter out genes with \|log2FC\| \< 0.01 (for visualization only, not the final plot)
+
+  - Reason: See how the plot looks without the many genes with log2FC close to zero
+
+  - Effect: See 'Fix2'. Not intended for the final plot, but it shows that many of my plotted genes differ from the published figure because they have smaller log2FC values
+
+- Remove genes that overlap with IRs
+
+  - Reason: this was done in the main figure and not yet updated in reproduced figure
+
+  - Effect: When I did this, the enrichment of genes near IRs disappeared! Only 2 significant IRs remained. See 'Fix3'
 
 ![From Check In 1](images/try1_gene_plot-01.png){width="404"}
 
