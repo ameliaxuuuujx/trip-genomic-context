@@ -16,7 +16,7 @@ This workflow is following the instructions from NICHD-BSPC's [intro-rnaseq-hpc]
 
 TO_ADD:All summarized quality control metrics are saved in `this/path`
 
-A future way to improve this workflow would be to automate this process. Instead, the lines of this file that were changed to account for the different clones will be clearly labeled by note `###CONFIG`, but also listed here:
+There are 3 main things to configure when re-running this document.
 
 1.  `#Load metadata` Every clone's DESeq has their own metadata since the groups are assigned differently.
 2.  `#Load GTF` This is not included in the repo, but can be downloaded [here](https://www.gencodegenes.org/mouse/release_M25.html)
@@ -29,6 +29,7 @@ library(RColorBrewer)
 library(DESeq2)
 library(pheatmap)
 library(DEGreport)
+library(ggrepel)
 library(ggplot2)
 library(rtracklayer)
 ```
@@ -44,8 +45,12 @@ data <- read.table("../../data/trip_clone_rnaseqcounts.txt",
 ###CONFIG:Change path to meta_file
 meta <- read.table("../../data/metadata_tables/clone_16_meta.txt", header=T, row.names=1, sep = "\t")
 
-#HELP FROM HOPGPT. all(colnames(data) == rownames(meta)) was FALSE. This was because the filenames were slightly off. To make this true, I need to replace the "-" with ".". To do this I asked hop for help on how to do this
+#HELP FROM HOPGPT. 
+#all(colnames(data) == rownames(meta)) was FALSE. This was because the filenames were slightly different. To make this TRUE, I need to replace the "-" with ".". To do this I asked hop for help on how to do this
 rownames(meta) <- gsub("-", ".", rownames(meta))
+
+#Convert Group to a factor
+meta$Group <- factor(meta$Group)
 ```
 
 ```{r}
@@ -65,7 +70,21 @@ What kinds of variation is there in the clones?
 ```{r}
 #PCA
 rld <- rlog(dds, blind=TRUE)
-plotPCA(rld, intgroup="Group")
+
+#PCA no label
+#plotPCA(rld, intgroup="Group")
+
+#PCA with labels
+pcaData <- plotPCA(rld, intgroup = "Group", returnData = TRUE)
+percentVar <- round(100 * attr(pcaData, "percentVar"))
+
+ggplot(pcaData, aes(PC1, PC2, color = Group, label = name)) +
+  geom_point(size = 3) +
+  geom_text_repel(size = 3) +
+  xlab(paste0("PC1: ", percentVar[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar[2], "% variance")) +
+  theme_classic()
+
 ```
 
 ```{r}
@@ -78,6 +97,7 @@ rld_cor <- cor(rld_mat)
 heat.colors <- RColorBrewer::brewer.pal(6, "Blues")
 pheatmap(rld_cor, annotation = meta, color = heat.colors, border_color=NA, fontsize = 10, 
          fontsize_row = 10, height=20)
+
 ```
 
 ### Dispersion Plot
@@ -106,15 +126,26 @@ res_table <- results(dds, contrast=contrast)
 summary(res_table, alpha = 0.05)
 ```
 
+### Visualization
+
+```{r}
+# IF APPLYING fold change shrinkage
+#res_table <- lfcShrink(dds, coef="Group_exp_vs_control", type="apeglm")
+
+# MA plot 
+plotMA(res_table, ylim=c(-5,5))
+```
+
 ### Results
 
 ```{r}
+
 padj.cutoff <- 0.1
 
-# Create a dataframe to simplify the res_table_try1 object
-res_table_df <- res_table %>%
-  data.frame() %>%
-  rownames_to_column(var="gene")
+# Create a dataframe to simplify the res_table object
+res_table_df <- as.data.frame(res_table)
+res_table_df$gene <- rownames(res_table_df)
+res_table_df <- res_table_df[, c("gene", setdiff(names(res_table_df), "gene"))]
 
 #Add GTF info column to table
 ## Convert our GTF to a large data frame
@@ -127,24 +158,17 @@ gtf_names <- gtf %>% dplyr::select(gene_id, gene_name) %>%
   dplyr::rename(ensgene = gene_id, symbol = gene_name)
 
 ##merge gene symbols
-res_table_df <- merge(gtf_names,res_table_df, by.x="ensgene", by.y="gene")
+res_table_df <- res_table_df %>%
+  dplyr::left_join(gtf_names, by = c("gene" = "ensgene"))
 
 # Subset the dataframe to keep only significant genes 
-sig_genes <- res_table_df %>%
-  dplyr::filter(padj < padj.cutoff)
+#sig_genes <- res_table_df %>%
+  #dplyr::filter(padj < padj.cutoff)
 
 #Exported results
 ##CONFIG Change the file names of the output!
 write.table(res_table_df, file = "c16_res_table__df.tsv", sep = "\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
 
-write.table(sig_genes, file = "c16_sig_genes.tsv", sep = "\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
-
-```
-
-### Data Visualization with MA Plot
-
-```{r}
-
-#Under construction!
+#write.table(sig_genes, file = "c16_sig_genes.tsv", sep = "\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
 
 ```
