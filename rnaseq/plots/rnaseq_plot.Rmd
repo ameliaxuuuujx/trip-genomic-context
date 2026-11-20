@@ -8,6 +8,9 @@ date: "2026-10-30"
 library(ggplot2)
 library(dplyr)
 library(tidyverse)
+library(ggrepel)
+library(AnnotationDbi)
+library(org.Mm.eg.db)
 
 #read_tables
 C16 <- read.delim("/Users/cmdb/trip-genomic-context/rnaseq/results/bedfiles/IR16_window_holm.tsv", header = TRUE, sep = "\t")
@@ -183,6 +186,38 @@ big <- subset(plot_data, abs(log2FC) > 0.01)
 
 ggplot(big, aes(x = distance / 1000, y = log2FC, colour = sig)) +
   geom_point(size = 1.5) +
+  geom_vline(xintercept = 0, colour = "grey40") +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "deepskyblue3") +
+  scale_colour_manual(values = c("not significant" = "black", "significant" = "red")) +
+  scale_x_continuous(limits = c(-100, 100)) +
+  labs(x = "Distance from IR (kb)", y = "log2 (Fold change)",
+       title = "Endogenous genes (|log2FC| > 0.01)") +
+  theme_classic()
+```
+```{r}
+
+big <- subset(plot_data, abs(log2FC) > 0.01)
+
+# Look up gene symbols from Ensembl IDs
+big$symbol <- mapIds(org.Mm.eg.db,
+                     keys = sub("\\..*$", "", big$gene),
+                     keytype = "ENSEMBL", column = "SYMBOL",
+                     multiVals = "first")
+
+# Label significant genes: symbol (fall back to Ensembl ID if missing) + clone
+big$label <- ifelse(
+  big$sig == "significant",
+  paste0(ifelse(is.na(big$symbol), big$gene, big$symbol),
+         "\n(clone ", big$clone, ")"),
+  NA
+)
+
+ggplot(big, aes(x = distance / 1000, y = log2FC, colour = sig)) +
+  geom_point(size = 1.5) +
+  geom_text_repel(aes(label = label), colour = "red", size = 2.8,
+                  fontface = "italic",
+                  na.rm = TRUE, max.overlaps = Inf,
+                  min.segment.length = 0, box.padding = 0.4) +
   geom_vline(xintercept = 0, colour = "grey40") +
   geom_hline(yintercept = 0, linetype = "dashed", colour = "deepskyblue3") +
   scale_colour_manual(values = c("not significant" = "black", "significant" = "red")) +
